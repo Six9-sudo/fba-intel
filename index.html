@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FBA Intel — Profit Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#080810;--surface:#0e0e1a;--card:#12121f;--border:rgba(255,255,255,0.07);--accent:#5b8eff;--green:#00c88c;--red:#ff5f5f;--yellow:#f4a623;--text:#eeeef5;--muted:#6b6b88;--soft:#a0a0bf;--mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(91,142,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(91,142,255,0.03) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0}
+
+/* LAYOUT */
+.shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh;position:relative;z-index:1}
+
+/* SIDEBAR */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:1.5rem 1rem;display:flex;flex-direction:column;gap:4px}
+.logo{font-family:var(--mono);font-size:13px;color:var(--accent);padding:0 8px;margin-bottom:1.5rem;letter-spacing:.05em}
+.logo span{color:var(--soft)}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--muted);transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:rgba(255,255,255,0.04);color:var(--soft)}
+.nav-item.active{background:rgba(91,142,255,0.1);color:var(--accent)}
+.nav-icon{font-size:15px;width:20px;text-align:center}
+.sidebar-footer{margin-top:auto;font-family:var(--mono);font-size:10px;color:var(--muted);padding:8px}
+
+/* MAIN */
+.main{padding:2rem;overflow-y:auto}
+.page-header{margin-bottom:2rem}
+.page-title{font-size:1.4rem;font-weight:600;margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--muted)}
+
+/* TABS */
+.tab-content{display:none}.tab-content.active{display:block}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.5rem;margin-bottom:1rem}
+.card-title{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem}
+
+/* FORM GRID */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group label{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.form-group input,.form-group select{background:#0a0a18;border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--sans);font-size:14px;padding:10px 12px;outline:none;transition:border-color .2s;width:100%}
+.form-group input:focus,.form-group select:focus{border-color:var(--accent)}
+.form-group select option{background:#0e0e1a}
+
+/* BUTTONS */
+.btn{font-family:var(--mono);font-size:12px;padding:11px 24px;border-radius:6px;border:none;cursor:pointer;transition:all .2s;letter-spacing:.05em}
+.btn-primary{background:var(--accent);color:#fff;font-weight:700}
+.btn-primary:hover{opacity:.88;transform:translateY(-1px)}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+/* RESULTS */
+.result-hero{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1rem}
+.metric{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center}
+.metric-val{font-family:var(--mono);font-size:1.6rem;font-weight:700;margin-bottom:4px}
+.metric-label{font-size:11px;color:var(--muted)}
+.metric.green .metric-val{color:var(--green)}
+.metric.red .metric-val{color:var(--red)}
+.metric.yellow .metric-val{color:var(--yellow)}
+.metric.blue .metric-val{color:var(--accent)}
+
+.breakdown-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.breakdown-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.breakdown-row:last-child{border-bottom:none}
+.breakdown-row.total{font-family:var(--mono);font-weight:700;color:var(--text)}
+.breakdown-row .label{color:var(--muted)}
+.breakdown-row .val{font-family:var(--mono)}
+.breakdown-row .val.cost{color:var(--red)}
+.breakdown-row .val.profit{color:var(--green)}
+
+.rating-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-family:var(--mono);font-size:11px;font-weight:700;margin-bottom:1rem}
+.rating-green{background:rgba(0,200,140,.12);color:var(--green);border:1px solid rgba(0,200,140,.25)}
+.rating-red{background:rgba(255,95,95,.12);color:var(--red);border:1px solid rgba(255,95,95,.25)}
+.rating-yellow{background:rgba(244,166,35,.12);color:var(--yellow);border:1px solid rgba(244,166,35,.25)}
+.rating-blue{background:rgba(91,142,255,.12);color:var(--accent);border:1px solid rgba(91,142,255,.25)}
+
+.suggestions{display:flex;flex-direction:column;gap:8px}
+.suggestion{font-size:13px;color:var(--soft);padding:10px 14px;background:rgba(91,142,255,0.05);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;line-height:1.6}
+
+/* CHAT */
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 200px)}
+.chat-messages{flex:1;overflow-y:auto;padding:1rem 0;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:75%;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.7}
+.msg.user{background:rgba(91,142,255,0.12);border:1px solid rgba(91,142,255,0.2);color:var(--text);align-self:flex-end;border-radius:10px 10px 2px 10px}
+.msg.ai{background:var(--card);border:1px solid var(--border);color:var(--soft);align-self:flex-start;border-radius:10px 10px 10px 2px}
+.msg.ai .sender{font-family:var(--mono);font-size:10px;color:var(--accent);margin-bottom:4px}
+.chat-input-row{display:flex;gap:10px;padding-top:1rem;border-top:1px solid var(--border)}
+.chat-input{flex:1;background:#0a0a18;border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--sans);font-size:14px;padding:10px 14px;outline:none;transition:border-color .2s}
+.chat-input:focus{border-color:var(--accent)}
+
+/* SOURCING */
+.plan-week{margin-bottom:1.25rem}
+.plan-week-title{font-family:var(--mono);font-size:12px;color:var(--accent);margin-bottom:8px}
+.plan-week ul{list-style:none;display:flex;flex-direction:column;gap:4px}
+.plan-week li{font-size:13px;color:var(--soft);padding-left:14px;position:relative;line-height:1.6}
+.plan-week li::before{content:'→';position:absolute;left:0;color:var(--accent);font-size:11px}
+.alloc-item{display:flex;justify-content:space-between;align-items:center;padding:10px;background:#0a0a18;border-radius:6px;margin-bottom:8px}
+.alloc-cat{font-size:13px;color:var(--text)}
+.alloc-amount{font-family:var(--mono);font-size:13px;color:var(--green)}
+.alloc-roi{font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+#results-section{display:none}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">FBA<span>Intel</span></div>
+    <button class="nav-item active" onclick="showTab('calc')"><span class="nav-icon">💰</span> Profit Calculator</button>
+    <button class="nav-item" onclick="showTab('sourcing')"><span class="nav-icon">📦</span> Sourcing Plan</button>
+    <button class="nav-item" onclick="showTab('chat')"><span class="nav-icon">🤖</span> AI Assistant</button>
+    <div class="sidebar-footer">v1.0 · FBA Intel</div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- ── PROFIT CALCULATOR ── -->
+    <div id="tab-calc" class="tab-content active">
+      <div class="page-header">
+        <div class="page-title">Profit Calculator</div>
+        <div class="page-sub">Enter product details to get a full FBA profit breakdown</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Product Details</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Buy Cost ($)</label>
+            <input type="number" id="buyCost" placeholder="12.00" step="0.01" value="12">
+          </div>
+          <div class="form-group">
+            <label>Sell Price ($)</label>
+            <input type="number" id="sellPrice" placeholder="34.00" step="0.01" value="34">
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <select id="category">
+              <option value="default">General (15%)</option>
+              <option value="beauty">Beauty (8%)</option>
+              <option value="health">Health (8%)</option>
+              <option value="electronics">Electronics (8%)</option>
+              <option value="clothing">Clothing (17%)</option>
+              <option value="toys">Toys (15%)</option>
+              <option value="home">Home (15%)</option>
+              <option value="sports">Sports (15%)</option>
+              <option value="automotive">Automotive (12%)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Product Weight (oz)</label>
+            <input type="number" id="weightOz" placeholder="8" value="8">
+          </div>
+          <div class="form-group">
+            <label>Shipping to FBA ($)</label>
+            <input type="number" id="shippingToFBA" placeholder="0.50" step="0.01" value="0.50">
+          </div>
+          <div class="form-group">
+            <label>Prep Cost ($)</label>
+            <input type="number" id="prepCost" placeholder="0.30" step="0.01" value="0.30">
+          </div>
+          <div class="form-group">
+            <label>Units to Buy</label>
+            <input type="number" id="targetUnits" placeholder="100" value="100">
+          </div>
+          <div class="form-group">
+            <label>Months in Storage</label>
+            <input type="number" id="monthsStorage" placeholder="1" value="1">
+          </div>
+        </div>
+        <div style="margin-top:1.25rem;display:flex;gap:10px">
+          <button class="btn btn-primary" onclick="calculate()">Calculate Profit →</button>
+          <button class="btn btn-ghost" onclick="resetForm()">Reset</button>
+        </div>
+      </div>
+
+      <!-- RESULTS -->
+      <div id="results-section">
+        <div id="rating-badge-wrap" style="margin-bottom:.75rem"></div>
+        <div class="result-hero" id="result-metrics"></div>
+        <div class="breakdown-grid">
+          <div class="card">
+            <div class="card-title">Cost Breakdown (per unit)</div>
+            <div id="cost-breakdown"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Projection ({{ units }} units)</div>
+            <div id="projection"></div>
+          </div>
+        </div>
+        <div class="card" id="suggestions-card" style="display:none">
+          <div class="card-title">AI Suggestions</div>
+          <div class="suggestions" id="suggestions-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SOURCING PLAN ── -->
+    <div id="tab-sourcing" class="tab-content">
+      <div class="page-header">
+        <div class="page-title">30-Day Sourcing Plan</div>
+        <div class="page-sub">AI builds your sourcing strategy from your budget</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Your Budget</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Total Budget ($)</label>
+            <input type="number" id="s-budget" placeholder="2500" value="2500">
+          </div>
+          <div class="form-group">
+            <label>Target ROI (%)</label>
+            <input type="number" id="s-roi" placeholder="40" value="40">
+          </div>
+          <div class="form-group">
+            <label>Risk Level</label>
+            <select id="s-risk">
+              <option value="conservative">Conservative</option>
+              <option value="moderate" selected>Moderate</option>
+              <option value="aggressive">Aggressive</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:1rem" onclick="getSourcingPlan()">Generate Plan →</button>
+      </div>
+      <div id="sourcing-result" style="display:none">
+        <div class="card">
+          <div class="card-title">Strategy Overview</div>
+          <p id="s-overview" style="font-size:14px;color:var(--soft);line-height:1.7"></p>
+        </div>
+        <div class="breakdown-grid">
+          <div class="card">
+            <div class="card-title">Budget Allocation</div>
+            <div id="s-allocation"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Weekly Action Plan</div>
+            <div id="s-weeks"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── AI CHAT ── -->
+    <div id="tab-chat" class="tab-content">
+      <div class="page-header">
+        <div class="page-title">AI Assistant</div>
+        <div class="page-sub">Ask anything about Amazon FBA — sourcing, pricing, strategy</div>
+      </div>
+      <div class="card" style="height:calc(100vh - 220px);display:flex;flex-direction:column;padding:1rem">
+        <div class="chat-messages" id="chat-messages">
+          <div class="msg ai">
+            <div class="sender">FBA Intel AI</div>
+            Hey! I'm your FBA assistant. Ask me anything — profit calculations, sourcing strategies, supplier tips, or how to find winning products. What are you working on?
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" class="chat-input" id="chat-input" placeholder="Ask about products, profits, sourcing..." onkeydown="if(event.key==='Enter')sendChat()">
+          <button class="btn btn-primary" onclick="sendChat()">Send →</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const API = 'http://localhost:4000/api';
+let chatHistory = [];
+
+// ─── TAB NAVIGATION ───────────────────────────────────────────────────────────
+function showTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ─── PROFIT CALCULATOR ────────────────────────────────────────────────────────
+async function calculate() {
+  const body = {
+    buyCost:       parseFloat(document.getElementById('buyCost').value),
+    sellPrice:     parseFloat(document.getElementById('sellPrice').value),
+    category:      document.getElementById('category').value,
+    weightOz:      parseFloat(document.getElementById('weightOz').value),
+    shippingToFBA: parseFloat(document.getElementById('shippingToFBA').value),
+    prepCost:      parseFloat(document.getElementById('prepCost').value),
+    targetUnits:   parseInt(document.getElementById('targetUnits').value),
+    monthsStorage: parseInt(document.getElementById('monthsStorage').value),
+  };
+
+  try {
+    const res  = await fetch(`${API}/calculate`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const json = await res.json();
+    if (!json.success) return alert('Error: ' + json.error);
+    renderResults(json.data);
+  } catch(e) {
+    alert('Server error — is the backend running?');
+  }
+}
+
+function renderResults(d) {
+  document.getElementById('results-section').style.display = 'block';
+  const { summary, costBreakdown, projection, suggestions } = d;
+
+  // Rating badge
+  const colorMap = { green:'rating-green', red:'rating-red', yellow:'rating-yellow', blue:'rating-blue', orange:'rating-yellow' };
+  document.getElementById('rating-badge-wrap').innerHTML =
+    `<span class="rating-badge ${colorMap[summary.ratingColor] || 'rating-blue'}">● ${summary.rating}</span>`;
+
+  // Metrics
+  const profitColor = summary.netProfitPerUnit > 0 ? 'green' : 'red';
+  const roiColor    = summary.roi >= 30 ? 'green' : summary.roi >= 15 ? 'yellow' : 'red';
+  document.getElementById('result-metrics').innerHTML = `
+    <div class="metric ${profitColor}"><div class="metric-val">$${summary.netProfitPerUnit.toFixed(2)}</div><div class="metric-label">Net Profit/Unit</div></div>
+    <div class="metric ${roiColor}"><div class="metric-val">${summary.roi}%</div><div class="metric-label">ROI</div></div>
+    <div class="metric blue"><div class="metric-val">${summary.profitMarginPct}%</div><div class="metric-label">Margin</div></div>
+    <div class="metric ${profitColor}"><div class="metric-val">$${projection.totalProfit.toFixed(0)}</div><div class="metric-label">Total Profit (${projection.targetUnits} units)</div></div>
+  `;
+
+  // Cost breakdown
+  const { buyCost, shippingToFBA, prepCost, referralFee, fulfillmentFee, storagePerUnit, totalCostPerUnit } = costBreakdown;
+  document.getElementById('cost-breakdown').innerHTML = `
+    <div class="breakdown-row"><span class="label">Buy cost</span><span class="val cost">-$${buyCost.toFixed(2)}</span></div>
+    <div class="breakdown-row"><span class="label">Shipping to FBA</span><span class="val cost">-$${shippingToFBA.toFixed(2)}</span></div>
+    <div class="breakdown-row"><span class="label">Prep cost</span><span class="val cost">-$${prepCost.toFixed(2)}</span></div>
+    <div class="breakdown-row"><span class="label">Referral fee</span><span class="val cost">-$${referralFee.toFixed(2)}</span></div>
+    <div class="breakdown-row"><span class="label">FBA fulfillment</span><span class="val cost">-$${fulfillmentFee.toFixed(2)}</span></div>
+    <div class="breakdown-row"><span class="label">Storage</span><span class="val cost">-$${storagePerUnit.toFixed(2)}</span></div>
+    <div class="breakdown-row total"><span class="label">Total cost</span><span class="val cost">-$${totalCostPerUnit.toFixed(2)}</span></div>
+    <div class="breakdown-row total"><span class="label">Net profit</span><span class="val profit">+$${summary.netProfitPerUnit.toFixed(2)}</span></div>
+  `;
+
+  // Projection
+  document.getElementById('projection').innerHTML = `
+    <div class="breakdown-row"><span class="label">Units</span><span class="val">${projection.targetUnits}</span></div>
+    <div class="breakdown-row"><span class="label">Total investment</span><span class="val cost">$${projection.totalInvestment.toFixed(0)}</span></div>
+    <div class="breakdown-row"><span class="label">Total revenue</span><span class="val">$${projection.totalRevenue.toFixed(0)}</span></div>
+    <div class="breakdown-row total"><span class="label">Total profit</span><span class="val profit">$${projection.totalProfit.toFixed(0)}</span></div>
+  `;
+
+  // Suggestions
+  if (suggestions?.length) {
+    document.getElementById('suggestions-card').style.display = 'block';
+    document.getElementById('suggestions-list').innerHTML = suggestions.map(s => `<div class="suggestion">${s}</div>`).join('');
+  }
+
+  document.getElementById('results-section').scrollIntoView({ behavior:'smooth' });
+}
+
+function resetForm() {
+  document.getElementById('results-section').style.display = 'none';
+}
+
+// ─── SOURCING PLAN ────────────────────────────────────────────────────────────
+async function getSourcingPlan() {
+  const btn = event.currentTarget;
+  btn.innerHTML = '<span class="spinner"></span>Generating...';
+  btn.disabled = true;
+
+  try {
+    const res  = await fetch(`${API}/sourcing-plan`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        budget:    parseFloat(document.getElementById('s-budget').value),
+        roiTarget: parseFloat(document.getElementById('s-roi').value),
+        riskLevel: document.getElementById('s-risk').value,
+      })
+    });
+    const json = await res.json();
+    if (!json.success) return alert(json.error);
+    renderSourcingPlan(json.data);
+  } catch(e) { alert('Server error'); }
+  finally { btn.innerHTML = 'Generate Plan →'; btn.disabled = false; }
+}
+
+function renderSourcingPlan(d) {
+  document.getElementById('sourcing-result').style.display = 'block';
+  document.getElementById('s-overview').textContent = d.overview;
+  document.getElementById('s-allocation').innerHTML = d.budgetAllocation.map(a =>
+    `<div class="alloc-item"><div><div class="alloc-cat">${a.category}</div><div class="alloc-roi">Target ROI: ${a.targetROI}%</div></div><div class="alloc-amount">$${a.amount}</div></div>`
+  ).join('');
+  const weeks = ['week1','week2','week3','week4'];
+  document.getElementById('s-weeks').innerHTML = weeks.map((w,i) =>
+    `<div class="plan-week"><div class="plan-week-title">Week ${i+1}</div><ul>${(d[w]||[]).map(a=>`<li>${a}</li>`).join('')}</ul></div>`
+  ).join('');
+}
+
+// ─── AI CHAT ──────────────────────────────────────────────────────────────────
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg   = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  appendMsg(msg, 'user');
+  chatHistory.push({ role:'user', content: msg });
+
+  const thinking = appendMsg('...', 'ai');
+
+  try {
+    const res  = await fetch(`${API}/chat`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ message: msg, history: chatHistory })
+    });
+    const json = await res.json();
+    thinking.remove();
+    const reply = json.data?.reply || json.error || 'Something went wrong';
+    appendMsg(reply, 'ai');
+    chatHistory.push({ role:'assistant', content: reply });
+  } catch(e) {
+    thinking.remove();
+    appendMsg('Server error — is the backend running?', 'ai');
+  }
+}
+
+function appendMsg(text, role) {
+  const box = document.getElementById('chat-messages');
+  const el  = document.createElement('div');
+  el.className = `msg ${role}`;
+  if (role === 'ai') el.innerHTML = `<div class="sender">FBA Intel AI</div>${text}`;
+  else el.textContent = text;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+  return el;
+}
+</script>
+</body>
+</html>
